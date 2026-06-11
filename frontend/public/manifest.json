@@ -1,0 +1,44 @@
+{
+  "name": "Totem IA",
+  "short_name": "Totem",
+  "description": "Assistente inteligente de onboarding com chat, check-in emocional e suporte RH.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0B12",
+  "theme_color": "#7C3AED",
+  "orientation": "portrait",
+  "lang": "pt-BR",
+  "categories": ["productivity", "business"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Conversar com Totem IA",
+      "short_name": "Chat",
+      "description": "Iniciar conversa com o assistente",
+      "url": "/?view=chat",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Check-in Rápido",
+      "short_name": "Check-in",
+      "description": "Registrar check-in emocional",
+      "url": "/?view=chat&action=checkin",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

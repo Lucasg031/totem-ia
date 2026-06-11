@@ -1,0 +1,21 @@
+# Development Caddyfile — no domain, self-signed HTTPS
+# Run: caddy run --config Caddyfile.dev
+# Access via https://localhost
+
+:443 {
+    tls internal
+
+    encode gzip
+
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    handle_path /api/* {
+        reverse_proxy backend:3001
+    }
+}
+
+:80 {
+    redir :443{uri}
+}

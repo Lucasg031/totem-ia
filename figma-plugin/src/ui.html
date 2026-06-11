@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #11111A; color: #f1f1f1; padding: 16px; font-size: 13px;
+    }
+    .page { display: flex; flex-direction: column; gap: 12px; }
+    .hidden { display: none; }
+    h2 { font-size: 16px; color: #A78BFA; margin-bottom: 4px; }
+    h3 { font-size: 13px; color: #888; margin-bottom: 4px; }
+    button {
+      width: 100%; padding: 10px; border-radius: 8px;
+      background: #7C3AED; border: none; color: #fff;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all 0.15s;
+    }
+    button:hover { background: #6D28D9; }
+    button.secondary { background: transparent; border: 1px solid #7C3AED44; color: #A78BFA; }
+    button:disabled { opacity: 0.4; cursor: default; }
+    input, textarea {
+      width: 100%; padding: 10px; border-radius: 8px;
+      background: #1A1A2A; border: 1px solid #2A2A3A; color: #fff;
+      font-size: 13px; outline: none;
+    }
+    input:focus, textarea:focus { border-color: #7C3AED; }
+    textarea { resize: vertical; font-family: inherit; }
+    .msg { padding: 8px 10px; margin-bottom: 6px; border-radius: 8px; font-size: 12px; line-height: 1.4; }
+    .msg.user { background: #7C3AED33; text-align: right; }
+    .msg.bot { background: #1A1A2A; border-left: 3px solid #7C3AED; }
+    .chat-area { flex: 1; max-height: 320px; overflow-y: auto; margin-bottom: 8px; }
+    .chat-area::-webkit-scrollbar { width: 3px; }
+    .chat-area::-webkit-scrollbar-thumb { background: #7C3AED; border-radius: 2px; }
+    .mood-row { display: flex; gap: 6px; }
+    .mood-btn {
+      flex: 1; padding: 8px 4px; border-radius: 8px;
+      background: #1A1A2A; border: 1px solid transparent;
+      text-align: center; cursor: pointer; font-size: 20px;
+      transition: all 0.15s;
+    }
+    .mood-btn:hover { border-color: #7C3AED44; }
+    .mood-btn.active { border-color: #7C3AED; background: #7C3AED22; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 11px; font-weight: 500;
+    }
+    .badge.normal { background: #7C3AED22; color: #A78BFA; }
+    .badge.attention { background: #CA8A0422; color: #FBBF24; }
+    .badge.critical { background: #EF444422; color: #F87171; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="page-home" class="page">
+      <div style="text-align:center;margin-bottom:8px"><span style="font-size:32px">🤖</span></div>
+      <h2 style="text-align:center">Totem IA</h2>
+      <p style="text-align:center;color:#888;font-size:12px;margin-bottom:8px">
+        Plugin de onboarding acolhedor
+      </p>
+      <button onclick="startChat()">💬 Iniciar conversa</button>
+      <button class="secondary" onclick="showCheckin()">📋 Check-in rápido</button>
+      <div style="text-align:center;margin-top:8px">
+        <span id="user-indicator" class="badge normal">Usuário: --</span>
+      </div>
+    </div>
+
+    <div id="page-chat" class="page hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <button class="secondary" style="width:auto;padding:4px 12px;font-size:11px" onclick="showHome()">←</button>
+        <span id="chat-badge" class="badge normal">Normal</span>
+      </div>
+      <h2>Chat</h2>
+      <div id="chat-messages" class="chat-area"></div>
+      <div style="display:flex;gap:6px">
+        <input id="chat-input" type="text" placeholder="Digite sua mensagem..."
+          onkeydown="if(event.key==='Enter')sendMessage()" />
+        <button style="width:auto;padding:10px 16px" onclick="sendMessage()">Enviar</button>
+      </div>
+    </div>
+
+    <div id="page-checkin" class="page hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <button class="secondary" style="width:auto;padding:4px 12px;font-size:11px" onclick="showHome()">←</button>
+      </div>
+      <h2>Check-in emocional</h2>
+      <h3>Como você está se sentindo?</h3>
+      <div class="mood-row">
+        <div class="mood-btn" data-mood="1" onclick="selectMood(1)">😢</div>
+        <div class="mood-btn" data-mood="2" onclick="selectMood(2)">😟</div>
+        <div class="mood-btn" data-mood="3" onclick="selectMood(3)">😐</div>
+        <div class="mood-btn" data-mood="4" onclick="selectMood(4)">😊</div>
+        <div class="mood-btn" data-mood="5" onclick="selectMood(5)">🤩</div>
+      </div>
+      <textarea id="checkin-note" placeholder="Quer compartilhar algo? (opcional)" rows="3"></textarea>
+      <button onclick="submitCheckin()">Enviar feedback</button>
+      <p id="checkin-result" style="text-align:center;font-size:12px;color:#888"></p>
+    </div>
+  </div>
+
+  <script>
+    let userId = null
+    let selectedMood = null
+    let messages = []
+    let chatHistory = []
+
+    function showHome() {
+      document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'))
+      document.getElementById('page-home').classList.remove('hidden')
+    }
+
+    async function ensureUser() {
+      if (userId) return userId
+      try {
+        const res = await fetch('http://localhost:3001/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'Figma User', email: 'figma-' + Date.now() + '@totem.ai', role: 'Designer' })
+        })
+        const data = await res.json()
+        userId = data.id
+        document.getElementById('user-indicator').textContent = 'Conectado ✓'
+        document.getElementById('user-indicator').classList.add('normal')
+        return userId
+      } catch {
+        userId = 'figma-offline'
+        document.getElementById('user-indicator').textContent = 'Offline'
+        return userId
+      }
+    }
+
+    async function startChat() {
+      await ensureUser()
+      document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'))
+      document.getElementById('page-chat').classList.remove('hidden')
+      document.getElementById('chat-messages').innerHTML = ''
+      messages = []
+      chatHistory = []
+      addBotMessage('👋 Bem-vindo ao Totem IA! Como posso ajudar?')
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('chat-input')
+      const text = input.value.trim()
+      if (!text) return
+      input.value = ''
+
+      addUserMessage(text)
+      const uid = await ensureUser()
+      
+      try {
+        const res = await fetch('http://localhost:3001/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: uid, content: text, history: chatHistory })
+        })
+        const data = await res.json()
+        chatHistory.push({ role: 'user', content: text })
+        chatHistory.push({ role: 'assistant', content: data.reply })
+        addBotMessage(data.reply, data.sentiment)
+        
+        const badge = document.getElementById('chat-badge')
+        badge.textContent = data.sentiment === 'critical' ? '🔴 Crítico' : data.sentiment === 'attention' ? '🟡 Atenção' : '🟢 Normal'
+        badge.className = 'badge ' + data.sentiment
+
+        if (data.sentiment === 'critical') {
+          addBotMessage('🆘 Seu bem-estar é importante. Um profissional do RH será notificado para oferecer suporte.')
+        }
+      } catch {
+        addBotMessage('Desculpe, ocorreu um erro de conexão. Tente novamente.')
+      }
+    }
+
+    function addUserMessage(text) {
+      const area = document.getElementById('chat-messages')
+      const div = document.createElement('div')
+      div.className = 'msg user'
+      div.textContent = text
+      area.appendChild(div)
+      area.scrollTop = area.scrollHeight
+    }
+
+    function addBotMessage(text, sentiment) {
+      const area = document.getElementById('chat-messages')
+      const div = document.createElement('div')
+      div.className = 'msg bot'
+      div.textContent = text
+      area.appendChild(div)
+      area.scrollTop = area.scrollHeight
+    }
+
+    function showCheckin() {
+      ensureUser()
+      document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'))
+      document.getElementById('page-checkin').classList.remove('hidden')
+      document.getElementById('checkin-result').textContent = ''
+      selectedMood = null
+      document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'))
+    }
+
+    function selectMood(val) {
+      selectedMood = val
+      document.querySelectorAll('.mood-btn').forEach(b => {
+        b.classList.toggle('active', Number(b.dataset.mood) === val)
+      })
+    }
+
+    async function submitCheckin() {
+      if (!selectedMood) { document.getElementById('checkin-result').textContent = 'Selecione um humor primeiro'; return }
+      const uid = await ensureUser()
+      const note = document.getElementById('checkin-note').value
+      try {
+        const res = await fetch('http://localhost:3001/api/checkins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: uid, mood: selectedMood, note, isOffRecord: false })
+        })
+        const data = await res.json()
+        document.getElementById('checkin-result').textContent = data.message || 'Check-in registrado!'
+        document.getElementById('checkin-result').style.color = '#4ADE80'
+      } catch {
+        document.getElementById('checkin-result').textContent = 'Erro ao conectar. Check-in salvo localmente.'
+        document.getElementById('checkin-result').style.color = '#F87171'
+      }
+    }
+
+    ensureUser()
+  </script>
+</body>
+</html>
