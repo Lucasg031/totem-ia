@@ -6,20 +6,10 @@
 services:
   - type: web
     name: totem-ia
-    runtime: node
+    env: docker
     region: ohio
     plan: free
-
-    # Build: frontend → backend
-    buildCommand: |
-      cd frontend && npm ci && npm run build && \
-      cd ../backend && npm ci && npm run build
-
-    # Start: backend serves API + frontend static files
-    startCommand: node backend/dist/index.js
-
-    # Health check
-    healthCheckPath: /api/health
+    dockerfilePath: ./Dockerfile
 
     # Environment variables
     envVars:
