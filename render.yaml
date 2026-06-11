@@ -1,17 +1,12 @@
-# ── Totem IA — Render Blueprint ──────────────────────────────────
-# Deploy: connect your GitHub repo to Render.com
-# Render auto-detects this file and creates the service
-# ──────────────────────────────────────────────────────────────────
-
 services:
   - type: web
     name: totem-ia
-    env: docker
+    runtime: node
     region: ohio
     plan: free
-    dockerfilePath: ./Dockerfile
-
-    # Environment variables
+    buildCommand: cd frontend && npm ci && npm run build && cd ../backend && npm ci && npm run build
+    startCommand: node backend/dist/index.js
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
